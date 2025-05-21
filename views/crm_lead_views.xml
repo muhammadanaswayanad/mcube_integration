@@ -15,8 +15,9 @@
                             <field name="direction"/>
                             <field name="status"/>
                             <field name="duration" widget="float_time"/>
+                            <field name="has_recording" invisible="1"/>
                             <button name="open_recording_url" type="object" string="Listen" 
-                                    class="btn btn-sm btn-primary" invisible="not record.has_recording"/>
+                                    class="btn btn-sm btn-primary" invisible="not has_recording"/>
                         </tree>
                     </field>
                 </page>
