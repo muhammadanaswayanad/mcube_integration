@@ -1,1 +1,4 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_mcube_call_record_user,mcube.call.record.user,model_mcube_call_record,base.group_user,1,1,1,1
+access_mcube_call_record_portal,mcube.call.record.portal,model_mcube_call_record,base.group_portal,1,0,0,0
+access_mcube_call_record_public,mcube.call.record.public,model_mcube_call_record,base.group_public,1,0,0,0

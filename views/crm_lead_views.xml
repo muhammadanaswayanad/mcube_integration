@@ -5,7 +5,7 @@
         <field name="model">crm.lead</field>
         <field name="inherit_id" ref="crm.crm_lead_view_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//notebook" position="inside">
+            <notebook position="inside">
                 <page string="Call Records" name="mcube_call_records">
                     <field name="call_record_ids">
                         <tree>
@@ -18,31 +18,9 @@
                             <button name="open_recording_url" type="object" string="Listen" 
                                     class="btn btn-sm btn-primary" invisible="not record.has_recording"/>
                         </tree>
-                        <form>
-                            <group>
-                                <group>
-                                    <field name="call_id"/>
-                                    <field name="phone_number"/>
-                                    <field name="virtual_number"/>
-                                    <field name="call_date"/>
-                                </group>
-                                <group>
-                                    <field name="direction"/>
-                                    <field name="status"/>
-                                    <field name="duration" widget="float_time"/>
-                                    <field name="agent_name"/>
-                                </group>
-                            </group>
-                            <group>
-                                <field name="recording_url" widget="url"/>
-                                <field name="has_recording" invisible="1"/>
-                                <button name="open_recording_url" type="object" string="Open Recording in New Tab" 
-                                        class="btn btn-primary" invisible="not has_recording"/>
-                            </group>
-                        </form>
                     </field>
                 </page>
-            </xpath>
+            </notebook>
         </field>
     </record>
 </odoo>

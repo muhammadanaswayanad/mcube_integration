@@ -1,22 +1,25 @@
 {
-    'name': 'MCUBE CRM Integration',
+    'name': 'MCUBE Integration',
     'version': '1.0',
-    'summary': 'Integrate MCUBE call system with CRM leads',
-    'description': """
-        This module integrates MCUBE call system with Odoo CRM.
-        It listens for inbound call webhooks from MCUBE and:
-        - Creates new CRM leads for new phone numbers
-        - Links leads to correct salesperson based on virtual number
-        - Saves call recording URLs in leads
-    """,
     'category': 'CRM',
+    'summary': 'Integration with MCUBE call tracking system',
+    'description': """
+        This module integrates Odoo with MCUBE call tracking system to:
+        - Create leads from inbound calls
+        - Track call recordings
+        - Link calls to users via virtual numbers
+    """,
     'author': 'Your Company',
     'website': 'https://yourcompany.com',
-    'depends': ['base', 'crm'],
+    'depends': [
+        'base',
+        'crm',
+    ],
     'data': [
         'views/res_users_views.xml',
         'views/mcube_call_record_views.xml',
         'views/crm_lead_views.xml',
+        'security/ir.model.access.csv',
     ],
     'installable': True,
     'application': False,
