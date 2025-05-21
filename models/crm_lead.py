@@ -1,10 +1,8 @@
-from odoo import models, fields
+from odoo import fields, models
 
 class CrmLead(models.Model):
     _inherit = 'crm.lead'
-
-    call_recording_url = fields.Char(string="Call Recording URL",
-                                    help="URL to the recorded call from MCUBE system")
+    
     call_record_ids = fields.One2many('mcube.call.record', 'lead_id', string="Call Records")
     call_count = fields.Integer(string="Call Count", compute='_compute_call_count')
     

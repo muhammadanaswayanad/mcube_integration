@@ -20,6 +20,12 @@ class MCubeCallRecord(models.Model):
     status = fields.Char("Call Status")
     disconnected_by = fields.Char("Disconnected By")
     agent_name = fields.Char("Agent Name")
+    has_recording = fields.Boolean(compute="_compute_has_recording", store=True)
+    
+    @api.depends('recording_url')
+    def _compute_has_recording(self):
+        for record in self:
+            record.has_recording = bool(record.recording_url)
     
     def open_recording_url(self):
         """Action to open the recording URL in a new browser tab"""

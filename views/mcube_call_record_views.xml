@@ -27,7 +27,7 @@
                     <div class="oe_button_box" name="button_box">
                         <button name="open_recording_url" type="object" string="Listen Recording" 
                                 class="oe_stat_button" icon="fa-volume-up"
-                                attrs="{'invisible': [('recording_url', '=', False)]}"/>
+                                invisible="not has_recording"/>
                     </div>
                     <div class="oe_title">
                         <h1>
@@ -40,6 +40,7 @@
                             <field name="phone_number"/>
                             <field name="virtual_number"/>
                             <field name="recording_url" widget="url"/>
+                            <field name="has_recording" invisible="1"/>
                         </group>
                         <group>
                             <field name="call_date"/>

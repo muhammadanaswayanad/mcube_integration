@@ -5,9 +5,6 @@
         <field name="model">crm.lead</field>
         <field name="inherit_id" ref="crm.crm_lead_view_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='phone']" position="after">
-                <field name="call_recording_url" widget="url"/>
-            </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Call Records" name="mcube_call_records">
                     <field name="call_record_ids">
@@ -18,7 +15,8 @@
                             <field name="direction"/>
                             <field name="status"/>
                             <field name="duration" widget="float_time"/>
-                            <button name="open_recording_url" type="object" string="Listen" class="btn btn-sm btn-primary" attrs="{'invisible': [('recording_url', '=', False)]}"/>
+                            <button name="open_recording_url" type="object" string="Listen" 
+                                    class="btn btn-sm btn-primary" invisible="not record.has_recording"/>
                         </tree>
                         <form>
                             <group>
@@ -37,7 +35,9 @@
                             </group>
                             <group>
                                 <field name="recording_url" widget="url"/>
-                                <button name="open_recording_url" type="object" string="Open Recording in New Tab" class="btn btn-primary" attrs="{'invisible': [('recording_url', '=', False)]}"/>
+                                <field name="has_recording" invisible="1"/>
+                                <button name="open_recording_url" type="object" string="Open Recording in New Tab" 
+                                        class="btn btn-primary" invisible="not has_recording"/>
                             </group>
                         </form>
                     </field>
