@@ -1,2 +1,2 @@
 from . import res_users
-from . import crm_lead
+from . import mcube_call_record

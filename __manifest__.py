@@ -14,8 +14,8 @@
     'website': 'https://yourcompany.com',
     'depends': ['base', 'crm'],
     'data': [
-        'security/ir.model.access.csv',
         'views/res_users_views.xml',
+        'views/mcube_call_record_views.xml',
         'views/crm_lead_views.xml',
     ],
     'installable': True,

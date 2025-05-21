@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="mcube_call_record_view_tree" model="ir.ui.view">
+        <field name="name">mcube.call.record.tree</field>
+        <field name="model">mcube.call.record</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="call_date"/>
+                <field name="call_id"/>
+                <field name="phone_number"/>
+                <field name="lead_id"/>
+                <field name="direction"/>
+                <field name="status"/>
+                <field name="duration" widget="float_time"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="mcube_call_record_view_form" model="ir.ui.view">
+        <field name="name">mcube.call.record.form</field>
+        <field name="model">mcube.call.record</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="open_recording_url" type="object" string="Listen Recording" 
+                                class="oe_stat_button" icon="fa-volume-up"
+                                attrs="{'invisible': [('recording_url', '=', False)]}"/>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="call_id" placeholder="Call ID"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="lead_id"/>
+                            <field name="phone_number"/>
+                            <field name="virtual_number"/>
+                            <field name="recording_url" widget="url"/>
+                        </group>
+                        <group>
+                            <field name="call_date"/>
+                            <field name="duration" widget="float_time"/>
+                            <field name="direction"/>
+                            <field name="status"/>
+                            <field name="disconnected_by"/>
+                            <field name="agent_name"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="mcube_call_record_view_search" model="ir.ui.view">
+        <field name="name">mcube.call.record.search</field>
+        <field name="model">mcube.call.record</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="call_id"/>
+                <field name="phone_number"/>
+                <field name="lead_id"/>
+                <filter string="Inbound" name="inbound" domain="[('direction', '=', 'inbound')]"/>
+                <filter string="Outbound" name="outbound" domain="[('direction', '=', 'outbound')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Lead" name="group_by_lead" domain="[]" context="{'group_by':'lead_id'}"/>
+                    <filter string="Direction" name="group_by_direction" domain="[]" context="{'group_by':'direction'}"/>
+                    <filter string="Status" name="group_by_status" domain="[]" context="{'group_by':'status'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action Window -->
+    <record id="action_mcube_call_records" model="ir.actions.act_window">
+        <field name="name">Call Records</field>
+        <field name="res_model">mcube.call.record</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No call records found.
+            </p>
+            <p>
+                Call records are automatically created when calls are received from MCUBE.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Item -->
+    <menuitem id="menu_mcube_call_records"
+              name="Call Records"
+              action="action_mcube_call_records"
+              parent="crm.crm_menu_root"
+              sequence="5"/>
+</odoo>

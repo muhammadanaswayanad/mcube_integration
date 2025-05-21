@@ -8,6 +8,41 @@
             <xpath expr="//field[@name='phone']" position="after">
                 <field name="call_recording_url" widget="url"/>
             </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Call Records" name="mcube_call_records">
+                    <field name="call_record_ids">
+                        <tree>
+                            <field name="call_date"/>
+                            <field name="call_id"/>
+                            <field name="phone_number"/>
+                            <field name="direction"/>
+                            <field name="status"/>
+                            <field name="duration" widget="float_time"/>
+                            <button name="open_recording_url" type="object" string="Listen" class="btn btn-sm btn-primary" attrs="{'invisible': [('recording_url', '=', False)]}"/>
+                        </tree>
+                        <form>
+                            <group>
+                                <group>
+                                    <field name="call_id"/>
+                                    <field name="phone_number"/>
+                                    <field name="virtual_number"/>
+                                    <field name="call_date"/>
+                                </group>
+                                <group>
+                                    <field name="direction"/>
+                                    <field name="status"/>
+                                    <field name="duration" widget="float_time"/>
+                                    <field name="agent_name"/>
+                                </group>
+                            </group>
+                            <group>
+                                <field name="recording_url" widget="url"/>
+                                <button name="open_recording_url" type="object" string="Open Recording in New Tab" class="btn btn-primary" attrs="{'invisible': [('recording_url', '=', False)]}"/>
+                            </group>
+                        </form>
+                    </field>
+                </page>
+            </xpath>
         </field>
     </record>
 </odoo>
