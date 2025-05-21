@@ -45,6 +45,12 @@ class MCubeWebhookController(http.Controller):
             # Create an environment with superuser access to avoid permission issues
             env = request.env(su=True)
             
+            # Ensure MCUBE API source exists
+            mcube_source = env['utm.source'].search([('name', '=', 'MCUBE API')], limit=1)
+            if not mcube_source:
+                _logger.info("Creating new UTM source: MCUBE API")
+                mcube_source = env['utm.source'].create({'name': 'MCUBE API'})
+            
             # More thorough duplicate check - check phone number in multiple fields
             existing_lead = env['crm.lead'].search([
                 '|', '|', '|',
@@ -131,6 +137,7 @@ class MCubeWebhookController(http.Controller):
                 'user_id': user.id if user else False,
                 'team_id': user.sale_team_id.id if hasattr(user, 'sale_team_id') and user.sale_team_id else False,
                 'type': 'lead',
+                'source_id': mcube_source.id,  # Set the lead source to MCUBE API
             }
             
             try:
