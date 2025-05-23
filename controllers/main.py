@@ -3,7 +3,8 @@ from odoo.http import request
 import logging
 import json
 import threading
-import time
+from odoo.api import Environment
+import odoo
 
 _logger = logging.getLogger(__name__)
 
@@ -44,9 +45,14 @@ class MCubeWebhookController(http.Controller):
                     status=400
                 )
             
-            # Return a quick acknowledgement response to avoid timeout
-            # Process the webhook data in a background thread
-            thread = threading.Thread(target=self._process_webhook_data, args=(data,))
+            # Get necessary info for background processing
+            db_name = request.env.cr.dbname
+            
+            # Process the webhook data in a background thread with proper context
+            thread = threading.Thread(
+                target=self._process_webhook_data,
+                args=(db_name, data)
+            )
             thread.start()
             
             # Return immediate response while processing continues in background
@@ -64,14 +70,15 @@ class MCubeWebhookController(http.Controller):
                 status=500
             )
     
-    def _process_webhook_data(self, data):
+    def _process_webhook_data(self, db_name, data):
         """Process webhook data in a separate thread to avoid timeout issues"""
         try:
             _logger.info("Starting background processing of webhook data")
             
-            # Create a new cursor/environment since we're in a new thread
-            with request.env.registry.cursor() as cr:
-                env = request.env(cr=cr, su=True)
+            # Create a new registry and environment for the thread
+            registry = odoo.registry(db_name)
+            with registry.cursor() as cr:
+                env = Environment(cr, odoo.SUPERUSER_ID, {})
                 
                 # Extract required fields
                 phone = data.get('callto')
