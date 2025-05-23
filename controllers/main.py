@@ -67,6 +67,8 @@ class MCubeWebhookController(http.Controller):
     def _process_webhook_data(self, data):
         """Process webhook data in a separate thread to avoid timeout issues"""
         try:
+            _logger.info("Starting background processing of webhook data")
+            
             # Create a new cursor/environment since we're in a new thread
             with request.env.registry.cursor() as cr:
                 env = request.env(cr=cr, su=True)
@@ -77,18 +79,27 @@ class MCubeWebhookController(http.Controller):
                 recording_url = data.get('filename')
                 call_id = data.get('callid')
                 
+                _logger.info(f"Background thread processing call ID {call_id} from {phone}")
+                
                 if not phone:
                     _logger.warning("Missing phone number in MCUBE webhook data")
                     return
                 
                 # Ensure MCUBE API source exists
-                mcube_source = env['utm.source'].search([('name', '=', 'MCUBE API')], limit=1)
-                if not mcube_source:
-                    _logger.info("Creating new UTM source: MCUBE API")
-                    mcube_source = env['utm.source'].create({'name': 'MCUBE API'})
+                try:
+                    _logger.info("Checking for MCUBE API source")
+                    mcube_source = env['utm.source'].search([('name', '=', 'MCUBE API')], limit=1)
+                    if not mcube_source:
+                        _logger.info("Creating new UTM source: MCUBE API")
+                        mcube_source = env['utm.source'].create({'name': 'MCUBE API'})
+                    _logger.info(f"Using UTM source: {mcube_source.name} (ID: {mcube_source.id})")
+                except Exception as source_error:
+                    _logger.exception(f"Error with UTM source: {source_error}")
+                    mcube_source = False
                 
                 # More thorough duplicate check with timeout handling
                 try:
+                    _logger.info(f"Searching for existing lead with phone: {phone}")
                     # Set a timeout for the search operation
                     existing_lead = env['crm.lead'].with_context(prefetch_fields=False).search([
                         '|', '|', '|',
@@ -97,11 +108,15 @@ class MCubeWebhookController(http.Controller):
                         ('partner_id.phone', '=', phone),
                         ('partner_id.mobile', '=', phone)
                     ], limit=1)
+                    _logger.info(f"Search complete. Existing lead found: {bool(existing_lead)}")
+                    if existing_lead:
+                        _logger.info(f"Found existing lead ID: {existing_lead.id}, Name: {existing_lead.name}")
                 except Exception as search_error:
-                    _logger.warning(f"Error searching for existing lead: {search_error}")
+                    _logger.exception(f"Error searching for existing lead: {search_error}")
                     existing_lead = False
                 
                 # Create call record entry regardless of whether we have a lead or not
+                _logger.info("Preparing call record values")
                 call_record_vals = {
                     'call_id': call_id,
                     'phone_number': phone,
@@ -119,74 +134,115 @@ class MCubeWebhookController(http.Controller):
                     # Link call record to existing lead
                     call_record_vals['lead_id'] = existing_lead.id
                     
-                    # Create call record entry
-                    call_record = env['mcube.call.record'].create(call_record_vals)
-                    _logger.info(f"Created call record (ID: {call_record.id}) for existing lead (ID: {existing_lead.id})")
-                    
-                    # Need to commit since we're in a separate thread
-                    cr.commit()
-                    return
+                    try:
+                        _logger.info(f"Creating call record for existing lead ID: {existing_lead.id}")
+                        # Create call record entry
+                        call_record = env['mcube.call.record'].create(call_record_vals)
+                        _logger.info(f"Created call record (ID: {call_record.id}) for existing lead (ID: {existing_lead.id})")
+                        
+                        # Need to commit since we're in a separate thread
+                        _logger.info("Committing transaction")
+                        cr.commit()
+                        return
+                    except Exception as record_error:
+                        _logger.exception(f"Error creating call record for existing lead: {record_error}")
+                        cr.rollback()
+                        # Continue to try creating a new lead
                 
                 # Find the user with matching MCUBE virtual number
-                user = env['res.users'].search([('mcube_virtual_number', '=', virtual_number)], limit=1)
-                
-                if not user:
-                    _logger.warning(f"No user found with MCUBE virtual number: {virtual_number}")
+                try:
+                    _logger.info(f"Searching for user with virtual number: {virtual_number}")
+                    user = env['res.users'].search([('mcube_virtual_number', '=', virtual_number)], limit=1)
                     
-                    # Try alternative methods to find a responsible user
-                    # 1. Check if the phone number is from a known customer with a salesperson
-                    partner = env['res.partner'].search([('phone', '=', phone), ('user_id', '!=', False)], limit=1)
-                    if partner and partner.user_id:
-                        user = partner.user_id
-                        _logger.info(f"Assigned to user {user.name} based on existing customer relationship")
+                    if user:
+                        _logger.info(f"Found user with matching virtual number: {user.name} (ID: {user.id})")
                     else:
-                        # 2. Try to assign to a default sales team member (round-robin)
-                        sales_team = env['crm.team'].search([('use_leads', '=', True)], limit=1)
-                        if sales_team:
-                            # Get all active users in the sales team
-                            team_members = sales_team.member_ids.filtered(lambda m: m.active)
-                            if team_members:
-                                # Simple round-robin: get the count of leads for each user and pick the one with fewest
-                                member_lead_counts = []
-                                for member in team_members:
-                                    lead_count = env['crm.lead'].search_count([('user_id', '=', member.id)])
-                                    member_lead_counts.append((member, lead_count))
-                                
-                                # Sort by lead count (ascending) and take the first one
-                                user = sorted(member_lead_counts, key=lambda x: x[1])[0][0] if member_lead_counts else False
-                                if user:
-                                    _logger.info(f"Assigned to sales team member {user.name} via round-robin")
+                        _logger.warning(f"No user found with MCUBE virtual number: {virtual_number}")
+                        
+                        # Try alternative methods to find a responsible user
+                        # 1. Check if the phone number is from a known customer with a salesperson
+                        partner = env['res.partner'].search([('phone', '=', phone), ('user_id', '!=', False)], limit=1)
+                        if partner and partner.user_id:
+                            user = partner.user_id
+                            _logger.info(f"Assigned to user {user.name} based on existing customer relationship")
+                        else:
+                            # 2. Try to assign to a default sales team member (round-robin)
+                            sales_team = env['crm.team'].search([('use_leads', '=', True)], limit=1)
+                            if sales_team:
+                                # Get all active users in the sales team
+                                team_members = sales_team.member_ids.filtered(lambda m: m.active)
+                                if team_members:
+                                    # Simple round-robin: get the count of leads for each user and pick the one with fewest
+                                    member_lead_counts = []
+                                    for member in team_members:
+                                        lead_count = env['crm.lead'].search_count([('user_id', '=', member.id)])
+                                        member_lead_counts.append((member, lead_count))
+                                    
+                                    # Sort by lead count (ascending) and take the first one
+                                    user = sorted(member_lead_counts, key=lambda x: x[1])[0][0] if member_lead_counts else False
+                                    if user:
+                                        _logger.info(f"Assigned to sales team member {user.name} via round-robin")
                 
                     # If all else fails, assign to admin user
                     if not user:
                         _logger.warning("No suitable user found, assigning to admin")
                         user = env.ref('base.user_admin')
+                        _logger.info(f"Assigned to admin user: {user.name} (ID: {user.id})")
+                except Exception as user_error:
+                    _logger.exception(f"Error finding responsible user: {user_error}")
+                    user = False
                 
                 # Create new lead
+                _logger.info("Preparing to create new lead")
                 lead_vals = {
                     'name': f"Inbound Call from {phone}",
                     'phone': phone,
                     'user_id': user.id if user else False,
                     'team_id': user.sale_team_id.id if hasattr(user, 'sale_team_id') and user.sale_team_id else False,
                     'type': 'lead',
-                    'source_id': mcube_source.id,  # Set the lead source to MCUBE API
                 }
                 
+                # Add source only if we successfully found/created one
+                if mcube_source:
+                    lead_vals['source_id'] = mcube_source.id
+                
+                # Check if the model has required fields we're not setting
                 try:
+                    _logger.info("Checking for required fields on crm.lead model")
+                    lead_fields = env['crm.lead'].fields_get()
+                    required_fields = []
+                    for field_name, field_attrs in lead_fields.items():
+                        if field_attrs.get('required') and field_name not in lead_vals:
+                            required_fields.append(field_name)
+                    
+                    if required_fields:
+                        _logger.warning(f"Missing required fields for lead creation: {', '.join(required_fields)}")
+                        # Try to set default values for required fields
+                        for field in required_fields:
+                            lead_vals[field] = False  # Set a default value
+                except Exception as fields_error:
+                    _logger.exception(f"Error checking required fields: {fields_error}")
+                
+                try:
+                    _logger.info(f"Creating new lead with values: {lead_vals}")
                     new_lead = env['crm.lead'].create(lead_vals)
+                    _logger.info(f"Successfully created new lead (ID: {new_lead.id}, Name: {new_lead.name})")
                     
                     # Link and create call record
                     call_record_vals['lead_id'] = new_lead.id
+                    _logger.info("Creating call record linked to new lead")
                     call_record = env['mcube.call.record'].create(call_record_vals)
-                    
-                    _logger.info(f"Created new lead (ID: {new_lead.id}) with call record (ID: {call_record.id})")
+                    _logger.info(f"Created call record (ID: {call_record.id})")
                     
                     # Need to commit since we're in a separate thread
+                    _logger.info("Committing transaction")
                     cr.commit()
+                    _logger.info("Background processing completed successfully")
                 except Exception as create_error:
                     _logger.exception(f"Error creating lead: {create_error}")
                     # Rollback in case of error
+                    _logger.info("Rolling back transaction due to error")
                     cr.rollback()
                     
         except Exception as process_error:
-            _logger.exception(f"Error in background processing of webhook data: {process_error}")
+            _logger.exception(f"Critical error in background processing of webhook data: {process_error}")
